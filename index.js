@@ -49,26 +49,26 @@ app.listen(port, () => {
 });
 
 // Meminta Node.js mencari lokasi asli Chromium di sistem Replit
-let chromePath;
-try {
-  chromePath = execSync('which chromium').toString().trim();
-} catch (e) {
-  try {
-    chromePath = execSync('which google-chrome').toString().trim();
-  } catch (e2) {
-    chromePath = null; // Biarkan Puppeteer cari sendiri
-  }
-}
-console.log(`Lokasi Chromium ditemukan di: ${chromePath}`);
-
-// Inisialisasi bot dengan penyimpanan sesi LOKAL (di dalam Replit)
+// Hapus: const chromePath = execSync('which chromium').toString().trim();
+// Dan ubah client config jadi:
 const client = new Client({
     authStrategy: new LocalAuth(), 
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        executablePath: chromePath 
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        // Hapus executablePath, biarkan Puppeteer cari sendiri
     }
 });
+
+console.log(`Lokasi Chromium ditemukan di: ${chromePath}`);
+
+// Inisialisasi bot dengan penyimpanan sesi LOKAL (di dalam Replit)
+// const client = new Client({
+//     authStrategy: new LocalAuth(), 
+//     puppeteer: {
+//         args: ['--no-sandbox', '--disable-setuid-sandbox'],
+//         executablePath: chromePath 
+//     }
+// });
 
 client.on('qr', (qr) => {
     qrcode.generate(qr, { small: true });
