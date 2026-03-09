@@ -1,0 +1,26 @@
+[build]
+nixpacks = false
+
+[build.apt]
+packages = [
+  "libglib2.0-0",
+  "libx11-6",
+  "libxrandr2",
+  "libxinerama1",
+  "libxi6",
+  "libxext6",
+  "libxcursor1",
+  "libxss1",
+  "libxtst6",
+  "libxdamage1",
+  "libxcomposite1",
+  "libxkbcommon0",
+  "libpango-1.0-0",
+  "libpangocairo-1.0-0",
+  "libatk1.0-0",
+  "libatk-bridge2.0-0",
+  "libcups2",
+  "libdrm2",
+  "libgbm1",
+  "libasound2"
+]
