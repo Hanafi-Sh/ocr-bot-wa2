@@ -1,7 +1,7 @@
 const { execSync } = require('child_process');
 const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js'); // Kembali menggunakan LocalAuth
-const qrcode = require('qrcode-terminal');
+// const qrcode = require('qrcode-terminal');
 const Tesseract = require('tesseract.js');
 const cron = require('node-cron');
 const fs = require('fs');     // Library baru untuk membaca file
@@ -40,8 +40,31 @@ const memoriPercakapan = new Map();
 const app = express();
 const port = process.env.PORT || 3000;
 
+let qrCodeImage = ''; // Variabel untuk menyimpan gambar QR Code sementara
+
+// app.get('/', (req, res) => {
+//     res.send('Bot WhatsApp OCR sedang berjalan!');
+// });
+
 app.get('/', (req, res) => {
-    res.send('Bot WhatsApp OCR sedang berjalan!');
+    if (qrCodeImage) {
+        // Jika ada QR Code, tampilkan di web HTML
+        res.send(`
+            <html>
+                <body style="text-align: center; font-family: Arial, sans-serif; margin-top: 50px;">
+                    <h2>Scan QR Code WhatsApp</h2>
+                    <img src="${qrCodeImage}" alt="QR Code" style="border: 2px solid black; padding: 10px; border-radius: 10px;" />
+                    <p>Silakan scan menggunakan WhatsApp di HP Anda.</p>
+                    <p><i>Halaman ini akan refresh otomatis setiap 5 detik...</i></p>
+                    <script>
+                        setTimeout(() => location.reload(), 5000);
+                    </script>
+                </body>
+            </html>
+        `);
+    } else {
+        res.send('Bot WhatsApp OCR sedang berjalan! (QR Code belum tersedia atau bot sudah berhasil login)');
+    }
 });
 
 app.listen(port, () => {
@@ -68,12 +91,28 @@ const client = new Client({
 //     }
 // });
 
+// client.on('qr', (qr) => {
+//     qrcode.generate(qr, { small: true });
+//     console.log('Scan QR code di atas menggunakan aplikasi WhatsApp-mu!');
+// });
+
+// client.on('ready', () => {
+//     console.log('Bot sudah siap dan terhubung!');
+// });
+
 client.on('qr', (qr) => {
-    qrcode.generate(qr, { small: true });
-    console.log('Scan QR code di atas menggunakan aplikasi WhatsApp-mu!');
+    // Mengubah data QR menjadi gambar Base64
+    qrcode.toDataURL(qr, (err, url) => {
+        if (!err) {
+            qrCodeImage = url;
+            console.log('✅ QR Code baru telah dibuat! Buka link web Railway Anda untuk melakukan scan.');
+        }
+    });
 });
 
+// Bersihkan gambar dari memori web jika bot sudah berhasil login
 client.on('ready', () => {
+    qrCodeImage = ''; 
     console.log('Bot sudah siap dan terhubung!');
 });
 
