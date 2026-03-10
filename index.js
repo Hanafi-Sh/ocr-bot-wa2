@@ -1,6 +1,7 @@
 const { execSync } = require('child_process');
 const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js'); // Kembali menggunakan LocalAuth
+const qrcode = require('qrcode'); // WAJIB ADA AGAR BISA MEMBUAT GAMBAR QR
 // const qrcode = require('qrcode-terminal');
 const Tesseract = require('tesseract.js');
 const cron = require('node-cron');
