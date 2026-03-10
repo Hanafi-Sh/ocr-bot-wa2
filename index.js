@@ -48,14 +48,12 @@ app.listen(port, () => {
     console.log(`Web server berjalan di port ${port}`);
 });
 
-// Meminta Node.js mencari lokasi asli Chromium di sistem Replit
-// Hapus: const chromePath = execSync('which chromium').toString().trim();
-// Dan ubah client config jadi:
+// Meminta Node.js mencari lokasi asli Chromium di sistem
 const client = new Client({
     authStrategy: new LocalAuth(), 
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-        // Hapus executablePath, biarkan Puppeteer cari sendiri
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'], // Added --disable-dev-shm-usage for Docker stability
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH // This reads from the Dockerfile ENV
     }
 });
 
