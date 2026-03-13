@@ -418,7 +418,12 @@ client.on('message', async msg => {
         const isVideo = media.mimetype.includes('video');
 
         if (isImage || isVideo) {
-            msg.reply(`Sedang menganalisis ${isImage ? 'gambar' : 'video'}... ${isImage ? '🖼️' : '🎥'}`);
+            let pesanAwal;
+            try {
+                pesanAwal = await msg.reply("Analyzing...");
+            } catch (e) {
+                pesanAwal = await chat.sendMessage("Analyzing...");
+            }
 
             try {
                 const imageBase64 = media.data;
@@ -455,14 +460,14 @@ client.on('message', async msg => {
 
                 if (responseData.candidates && responseData.candidates[0].content && responseData.candidates[0].content.parts[0].text) {
                     const hasilAnalisis = responseData.candidates[0].content.parts[0].text;
-                    msg.reply(`✨ *Hasil Analisis ${isImage ? 'Gambar' : 'Video'}:*\n\n${hasilAnalisis}`);
+                    await pesanAwal.edit(`✨ *Hasil Analisis ${isImage ? 'Gambar' : 'Video'}:*\n\n${hasilAnalisis}`);
                 } else {
                     console.error('Gemini API Error:', JSON.stringify(responseData));
-                    msg.reply('⚠️ Gemini gagal memproses media tersebut. Pastikan format didukung dan ukuran tidak terlalu besar.');
+                    await pesanAwal.edit('⚠️ Gemini gagal memproses media tersebut. Pastikan format didukung dan ukuran tidak terlalu besar.');
                 }
             } catch (error) {
                 console.error('Error Analisis Media:', error);
-                msg.reply('❌ Terjadi kesalahan saat mencoba menganalisis media dengan Gemini.');
+                await pesanAwal.edit('❌ Terjadi kesalahan saat mencoba menganalisis media dengan Gemini.');
             }
         }
         return;
@@ -543,7 +548,12 @@ client.on('message', async msg => {
 
         if (extractedUrls && isAutoSummaryEnabled) {
             const targetUrl = extractedUrls[0];
-            msg.reply('Menjelajahi link dan membaca isinya...');
+            let pesanAwal;
+            try {
+                pesanAwal = await msg.reply("Analyzing...");
+            } catch (e) {
+                pesanAwal = await chat.sendMessage("Analyzing...");
+            }
 
             try {
                 const { data } = await axios.get(targetUrl, {
@@ -562,7 +572,7 @@ client.on('message', async msg => {
                 textContent = textContent.replace(/\s+/g, ' ').trim().substring(0, 4000);
 
                 if (textContent.length < 150) {
-                    msg.reply('Tautan ini tidak berisi artikel teks panjang, atau web tersebut memblokir akses bot.');
+                    await pesanAwal.edit('Tautan ini tidak berisi artikel teks panjang, atau web tersebut memblokir akses bot.');
                     return;
                 }
 
@@ -582,11 +592,11 @@ client.on('message', async msg => {
 
                 const responseData = await response.json();
                 if (responseData.choices && responseData.choices.length > 0) {
-                    msg.reply(`📝 *Rangkuman Tautan:*\n\n${responseData.choices[0].message.content}`);
+                    await pesanAwal.edit(`📝 *Rangkuman Tautan:*\n\n${responseData.choices[0].message.content}`);
                 }
             } catch (error) {
                 console.error('Error membaca tautan:', error.message);
-                msg.reply('Gagal memproses tautan. Web mungkin dilindungi keamanan anti-bot atau jaringan sedang sibuk.');
+                await pesanAwal.edit('Gagal memproses tautan. Web mungkin dilindungi keamanan anti-bot atau jaringan sedang sibuk.');
             }
             return;
         }
