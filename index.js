@@ -361,40 +361,39 @@ client.on('message', async msg => {
         }
     }
 
-    // 5. PENANGANAN MEDIA (DIKIRIM KE DEEPSEEK VISION)
+    // 5. PENANGANAN MEDIA (MENGGUNAKAN GEMINI 3 FLASH PREVIEW)
     if (msg.hasMedia) {
         const media = await msg.downloadMedia();
+        const isImage = media.mimetype.includes('image');
+        const isVideo = media.mimetype.includes('video');
 
-        if (media.mimetype.includes('image')) {
-            msg.reply('Sedang menganalisis gambar... 🖼️');
+        if (isImage || isVideo) {
+            msg.reply(`Sedang menganalisis ${isImage ? 'gambar' : 'video'}... ${isImage ? '🖼️' : '🎥'}`);
 
             try {
-                // Konversi data media ke format Base64 (sudah tersedia di media.data)
                 const imageBase64 = media.data;
+                const userPrompt = msg.body ? msg.body.replace(/@\d+/g, '').trim() : "";
+                const defaultPrompt = isImage 
+                    ? "Tolong jelaskan isi gambar ini dengan detail dalam bahasa Indonesia. Jika ada teks di dalamnya, bacakan teksnya dengan akurat."
+                    : "Tolong jelaskan apa yang terjadi dalam video ini secara detail dalam bahasa Indonesia.";
+                
+                const finalPrompt = userPrompt ? `${userPrompt}\n\n(Catatan: Tolong jawab berdasarkan media yang dilampirkan ini)` : defaultPrompt;
 
-                // Menyiapkan pesan untuk DeepSeek Vision (V3/V4)
-                // Kita gunakan model 'deepseek-chat' karena mendukung prompt multimodal
-                const response = await fetch('https://api.deepseek.com/chat/completions', {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${process.env.GOOGLE_API_KEY}`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        model: 'deepseek-chat',
-                        messages: [
+                        contents: [
                             {
-                                role: "user",
-                                content: [
-                                    {
-                                        type: "text",
-                                        text: "Tolong jelaskan isi gambar ini dengan detail dalam bahasa Indonesia. Jika ada teks di dalamnya, bacakan teksnya dengan akurat."
-                                    },
-                                    {
-                                        type: "image_url",
-                                        image_url: {
-                                            url: `data:${media.mimetype};base64,${imageBase64}`
-                                        }
+                                parts: [
+                                    { text: finalPrompt },
+                                    { 
+                                        inline_data: { 
+                                            mime_type: media.mimetype, 
+                                            data: imageBase64 
+                                        } 
                                     }
                                 ]
                             }
@@ -404,16 +403,16 @@ client.on('message', async msg => {
 
                 const responseData = await response.json();
 
-                if (responseData.choices && responseData.choices.length > 0) {
-                    const hasilAnalisis = responseData.choices[0].message.content;
-                    msg.reply(`🖼️ *Hasil Analisis Gambar:*\n\n${hasilAnalisis}`);
-                } else if (responseData.error) {
-                    console.error('API Error:', responseData.error);
-                    msg.reply(`⚠️ API DeepSeek Gagal: ${responseData.error.message}`);
+                if (responseData.candidates && responseData.candidates[0].content && responseData.candidates[0].content.parts[0].text) {
+                    const hasilAnalisis = responseData.candidates[0].content.parts[0].text;
+                    msg.reply(`✨ *Hasil Analisis ${isImage ? 'Gambar' : 'Video'}:*\n\n${hasilAnalisis}`);
+                } else {
+                    console.error('Gemini API Error:', JSON.stringify(responseData));
+                    msg.reply('⚠️ Gemini gagal memproses media tersebut. Pastikan format didukung dan ukuran tidak terlalu besar.');
                 }
             } catch (error) {
-                console.error('Error Analisis Gambar:', error);
-                msg.reply('❌ Terjadi kesalahan saat mencoba menganalisis gambar.');
+                console.error('Error Analisis Media:', error);
+                msg.reply('❌ Terjadi kesalahan saat mencoba menganalisis media dengan Gemini.');
             }
         }
         return;
