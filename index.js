@@ -430,7 +430,7 @@ client.on('message', async msg => {
                 const userPrompt = msg.body ? msg.body.replace(/@\d+/g, '').trim() : "";
 
                 // Instruksi utama agar Gemini menjawab dengan ringkas (seperti DeepSeek)
-                const geminiSystemInstruction = "Kamu adalah HanBot, asisten WhatsApp yang cerdas, ramah, dan ringkas. selalu gunakan Bahasa Indonesia.\n\n";
+                const geminiSystemInstruction = "Kamu adalah asisten WhatsApp yang alami dan ringkas. Pahami foto/video yang diberikan dan sesuaikan dengan percakapan user, serta apa permintaan yang disampaikan user. selalu gunakan Bahasa Indonesia.\n\n";
 
                 const defaultPrompt = isImage
                     ? "Tolong jelaskan isi gambar ini secara ringkas. Jika ada teks di dalamnya, bacakan dengan akurat."
@@ -466,7 +466,7 @@ client.on('message', async msg => {
 
                 if (responseData.candidates && responseData.candidates[0].content && responseData.candidates[0].content.parts[0].text) {
                     const hasilAnalisis = responseData.candidates[0].content.parts[0].text;
-                    await pesanAwal.edit(`✨ *Hasil Analisis ${isImage ? 'Gambar' : 'Video'}:*\n\n${hasilAnalisis}`);
+                    await pesanAwal.edit(`${hasilAnalisis}`); // ✨ *Hasil Analisis ${isImage ? 'Gambar' : 'Video'}:*\n\n
                 } else {
                     console.error('Gemini API Error:', JSON.stringify(responseData));
                     await pesanAwal.edit('⚠️ Gemini gagal memproses media tersebut. Pastikan format didukung dan ukuran tidak terlalu besar.');
