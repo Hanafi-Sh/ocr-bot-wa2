@@ -50,24 +50,66 @@ let qrCodeImage = ''; // Variabel untuk menyimpan gambar QR Code sementara
 //     res.send('Bot WhatsApp OCR sedang berjalan!');
 // });
 
+app.get('/status', (req, res) => {
+    // Mengecek apakah client sudah memiliki info wid (berarti sudah login)
+    const isReady = !!(client.info && client.info.wid);
+    res.json({ ready: isReady });
+});
+
 app.get('/', (req, res) => {
     if (qrCodeImage) {
         // Jika ada QR Code, tampilkan di web HTML
         res.send(`
             <html>
-                <body style="text-align: center; font-family: Arial, sans-serif; margin-top: 50px;">
-                    <h2>Scan QR Code WhatsApp</h2>
-                    <img src="${qrCodeImage}" alt="QR Code" style="border: 2px solid black; padding: 10px; border-radius: 10px;" />
-                    <p>Silakan scan menggunakan WhatsApp di HP Anda.</p>
-                    <p><i>Halaman ini akan refresh otomatis setiap 5 detik...</i></p>
+                <head>
+                    <title>HanBot - Scan QR</title>
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                </head>
+                <body style="text-align: center; font-family: Arial, sans-serif; margin-top: 50px; background-color: #f0f2f5;">
+                    <div style="background: white; display: inline-block; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        <h2 style="color: #075e54;">Scan QR Code WhatsApp</h2>
+                        <img src="${qrCodeImage}" alt="QR Code" style="border: 1px solid #ddd; padding: 10px; border-radius: 10px; width: 256px; height: 256px;" />
+                        <p style="color: #555;">Silakan scan menggunakan WhatsApp di HP Anda.</p>
+                        <p style="font-size: 0.8em; color: #888;"><i>QR akan diperbarui otomatis setiap 1 menit...</i></p>
+                    </div>
                     <script>
-                        setTimeout(() => location.reload(), 5000);
+                        // Cek status koneksi setiap 2 detik untuk deteksi instan
+                        const checkStatus = setInterval(async () => {
+                            try {
+                                const res = await fetch('/status');
+                                const data = await res.json();
+                                if (data.ready) {
+                                    clearInterval(checkStatus);
+                                    location.reload();
+                                }
+                            } catch (e) {
+                                console.error("Gagal cek status:", e);
+                            }
+                        }, 2000);
+
+                        // Refresh halaman secara keseluruhan setiap 1 menit
+                        setTimeout(() => location.reload(), 60000);
                     </script>
                 </body>
             </html>
         `);
     } else {
-        res.send('Bot WhatsApp OCR sedang berjalan! (QR Code belum tersedia atau bot sudah berhasil login)');
+        res.send(`
+            <html>
+                <head>
+                    <title>HanBot - Status</title>
+                    <meta http-equiv="refresh" content="10">
+                </head>
+                <body style="text-align: center; font-family: Arial, sans-serif; margin-top: 50px; background-color: #f0f2f5;">
+                    <div style="background: white; display: inline-block; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        <h2 style="color: #075e54;">✅ Bot Aktif</h2>
+                        <p>Bot WhatsApp OCR sedang berjalan dan sudah terhubung!</p>
+                        <p style="color: #888; font-size: 0.9em;">Halaman ini akan cek status setiap 10 detik.</p>
+                        <button onclick="location.reload()" style="background: #25d366; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;">Refresh Manual</button>
+                    </div>
+                </body>
+            </html>
+        `);
     }
 });
 
@@ -134,7 +176,15 @@ client.on('auth_failure', (msg) => {
 // Tambahkan deteksi jika bot terputus dari WhatsApp
 client.on('disconnected', (reason) => {
     console.log('❌ Bot terputus dari WhatsApp! Alasan:', reason);
-    // Jika terputus karena logout, kita bisa mencoba untuk menghancurkan auth lama
+    qrCodeImage = '';
+    
+    // Melakukan inisialisasi ulang secara otomatis setelah 5 detik
+    console.log('🔄 Memulai ulang inisialisasi bot dalam 5 detik...');
+    setTimeout(() => {
+        client.initialize().catch(err => {
+            console.error('[RETRY ERROR] Gagal inisialisasi ulang:', err.message);
+        });
+    }, 5000);
 });
 
 let isAutoReadEnabled = true;
