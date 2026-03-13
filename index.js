@@ -177,7 +177,7 @@ client.on('auth_failure', (msg) => {
 client.on('disconnected', (reason) => {
     console.log('❌ Bot terputus dari WhatsApp! Alasan:', reason);
     qrCodeImage = '';
-    
+
     // Melakukan inisialisasi ulang secara otomatis setelah 5 detik
     console.log('🔄 Memulai ulang inisialisasi bot dalam 5 detik...');
     setTimeout(() => {
@@ -428,11 +428,17 @@ client.on('message', async msg => {
             try {
                 const imageBase64 = media.data;
                 const userPrompt = msg.body ? msg.body.replace(/@\d+/g, '').trim() : "";
-                const defaultPrompt = isImage 
-                    ? "Tolong jelaskan isi gambar ini dengan detail dalam bahasa Indonesia. Jika ada teks di dalamnya, bacakan teksnya dengan akurat."
-                    : "Tolong jelaskan apa yang terjadi dalam video ini secara detail dalam bahasa Indonesia.";
-                
-                const finalPrompt = userPrompt ? `${userPrompt}\n\n(Catatan: Tolong jawab berdasarkan media yang dilampirkan ini)` : defaultPrompt;
+
+                // Instruksi utama agar Gemini menjawab dengan ringkas (seperti DeepSeek)
+                const geminiSystemInstruction = "Kamu adalah HanBot, asisten WhatsApp yang cerdas, ramah, dan ringkas. selalu gunakan Bahasa Indonesia.\n\n";
+
+                const defaultPrompt = isImage
+                    ? "Tolong jelaskan isi gambar ini secara ringkas. Jika ada teks di dalamnya, bacakan dengan akurat."
+                    : "Tolong jelaskan apa yang terjadi dalam video ini secara ringkas.";
+
+                const finalPrompt = userPrompt
+                    ? `${geminiSystemInstruction}Permintaan user: ${userPrompt}\n(Jawablah berdasarkan media yang dilampirkan ini secara ringkas)`
+                    : `${geminiSystemInstruction}${defaultPrompt}`;
 
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${process.env.GOOGLE_API_KEY}`, {
                     method: 'POST',
@@ -444,11 +450,11 @@ client.on('message', async msg => {
                             {
                                 parts: [
                                     { text: finalPrompt },
-                                    { 
-                                        inline_data: { 
-                                            mime_type: media.mimetype, 
-                                            data: imageBase64 
-                                        } 
+                                    {
+                                        inline_data: {
+                                            mime_type: media.mimetype,
+                                            data: imageBase64
+                                        }
                                     }
                                 ]
                             }
