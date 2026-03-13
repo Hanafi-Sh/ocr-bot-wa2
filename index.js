@@ -3,7 +3,7 @@ const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js'); // Kembali menggunakan LocalAuth
 const qrcode = require('qrcode'); // WAJIB ADA AGAR BISA MEMBUAT GAMBAR QR
 // const qrcode = require('qrcode-terminal');
-const Tesseract = require('tesseract.js');
+// const Tesseract = require('tesseract.js'); // Dihapus untuk menghemat RAM
 const cron = require('node-cron');
 const fs = require('fs');     // Library baru untuk membaca file
 const path = require('path'); // Library baru untuk mengatur jalur file
@@ -130,7 +130,7 @@ client.on('disconnected', (reason) => {
 });
 
 let isAutoReadEnabled = true;
-let isOcrEnabled = true; // Default kita buat menyala (true), atau ubah ke false jika ingin default mati
+// let isOcrEnabled = true; // Dihapus
 let isAutoSummaryEnabled = true;
 // const memoriPercakapan = new Map();
 const stopwatchData = new Map(); // Tambahkan baris ini untuk memori Stopwatch
@@ -176,16 +176,7 @@ const stopwatchData = new Map(); // Tambahkan baris ini untuk memori Stopwatch
             msg.reply('❌ Fitur Auto-Rangkum Link DIMATIKAN.');
             return; 
         }
-        if (perintahKecil === '!ocr on') {
-            isOcrEnabled = true;
-            msg.reply('✅ Fitur pembaca gambar (OCR) DIAKTIFKAN.');
-            return; 
-        }
-        if (perintahKecil === '!ocr off') {
-            isOcrEnabled = false;
-            msg.reply('❌ Fitur pembaca gambar (OCR) DIMATIKAN.');
-            return; 
-        }
+// Bagian OCR dinonaktifkan
         if (perintahKecil === '!autoread on') {
             isAutoReadEnabled = true;
             msg.reply('✅ Fitur Auto-Read grup SEKARANG AKTIF.');
@@ -213,8 +204,7 @@ const stopwatchData = new Map(); // Tambahkan baris ini untuk memori Stopwatch
                                     `🗄️ *RAM Terpakai:* ${memoriTerpakaiMB} / ${batasMemoriMB}\n` +
                                     `💾 *Penyimpanan:* ${diskSpace}\n\n` +
                                     `⚙️ *Status Fitur:*\n` +
-                                    `- Auto-Read: ${isAutoReadEnabled ? '✅ ON' : '❌ OFF'}\n` +
-                                    `- OCR (Gambar): ${isOcrEnabled ? '✅ ON' : '❌ OFF'}`;
+                                    `- Auto-Read: ${isAutoReadEnabled ? '✅ ON' : '❌ OFF'}`;
                 msg.reply(teksBalasan);
             } catch (error) {
                 const memoriNode = process.memoryUsage().rss / 1024 / 1024;
@@ -353,34 +343,62 @@ const stopwatchData = new Map(); // Tambahkan baris ini untuk memori Stopwatch
         }
     }
 
-    // 5. JIKA PESAN BERUPA MEDIA (GAMBAR) -> JALANKAN OCR
+    // 5. PENANGANAN MEDIA (DIKIRIM KE DEEPSEEK VISION)
     if (msg.hasMedia) {
-        if (!isOcrEnabled) {
-            // Jika saklar mati, abaikan pesan media ini sepenuhnya
-            return; 
-        }
-
         const media = await msg.downloadMedia();
 
         if (media.mimetype.includes('image')) {
-            msg.reply('Sedang membaca teks pada gambar...');
+            msg.reply('Sedang menganalisis gambar... 🖼️');
 
             try {
-                const imageBuffer = Buffer.from(media.data, 'base64');
-                const { data: { text } } = await Tesseract.recognize(imageBuffer, 'ind+eng');
+                // Konversi data media ke format Base64 (sudah tersedia di media.data)
+                const imageBase64 = media.data; 
 
-                if (text.trim().length > 0) {
-                    msg.reply(`*Hasil Ekstraksi Teks:*\n\n${text}`);
-                } else {
-                    msg.reply('Maaf, tidak ada teks yang bisa terbaca dari gambar ini.');
+                // Menyiapkan pesan untuk DeepSeek Vision (V3/V4)
+                // Kita gunakan model 'deepseek-chat' karena mendukung prompt multimodal
+                const response = await fetch('https://api.deepseek.com/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat', 
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    { 
+                                        type: "text", 
+                                        text: "Tolong jelaskan isi gambar ini dengan detail dalam bahasa Indonesia. Jika ada teks di dalamnya, bacakan teksnya dengan akurat." 
+                                    },
+                                    {
+                                        type: "image_url",
+                                        image_url: {
+                                            url: `data:${media.mimetype};base64,${imageBase64}`
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    })
+                });
+
+                const responseData = await response.json();
+                
+                if (responseData.choices && responseData.choices.length > 0) {
+                    const hasilAnalisis = responseData.choices[0].message.content;
+                    msg.reply(`🖼️ *Hasil Analisis Gambar:*\n\n${hasilAnalisis}`);
+                } else if (responseData.error) {
+                    console.error('API Error:', responseData.error);
+                    msg.reply(`⚠️ API DeepSeek Gagal: ${responseData.error.message}`);
                 }
             } catch (error) {
-                console.error('Error OCR:', error);
-                msg.reply('Terjadi kesalahan saat memproses gambar.');
+                console.error('Error Analisis Gambar:', error);
+                msg.reply('❌ Terjadi kesalahan saat mencoba menganalisis gambar.');
             }
-        } else {
-            msg.reply('Fitur OCR dimatikan. Gunakan perintah *!ocr on* untuk mengaktifkan kembali.')
         }
+        return;
     }
         
 // 6. JIKA PESAN BERUPA TEKS BIASA -> TANYAKAN KE DEEPSEEK
