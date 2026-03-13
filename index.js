@@ -73,12 +73,18 @@ app.listen(port, () => {
     console.log(`Web server berjalan di port ${port}`);
 });
 
-// Meminta Node.js mencari lokasi asli Chromium di sistem
+// Konfigurasi Puppeteer khusus untuk Heroku dan Railway
 const client = new Client({
     authStrategy: new LocalAuth(), 
     puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'], // Added --disable-dev-shm-usage for Docker stability
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH // This reads from the Dockerfile ENV
+        args: [
+            '--no-sandbox', 
+            '--disable-setuid-sandbox', 
+            '--disable-dev-shm-usage',
+            '--disable-gpu'
+        ],
+        // Heroku Buildpack biasanya meletakkan Chrome di path ini, atau gunakan env
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable'
     }
 });
 
